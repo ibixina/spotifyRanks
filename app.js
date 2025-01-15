@@ -70,7 +70,8 @@ app.get("/callback", function (req, res) {
     },
   );
 });
-app.listen(8080, function () {
+const HOST = "0.0.0.0";
+app.listen(8080, HOST, function () {
   console.log("Example app listening on port 8080!");
   console.log("http://localhost:8080");
 });
@@ -155,7 +156,7 @@ async function removeFromPlayList(playlistId, songId) {
     `v1/playlists/${playlistId}/tracks`,
     "DELETE",
     {
-      uris: [uriFormate],
+      tracks: [{ uri: uriFormate }],
     },
   );
   console.log(response);
