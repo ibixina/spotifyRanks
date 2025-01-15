@@ -72,6 +72,7 @@ app.get("/callback", function (req, res) {
 });
 app.listen(8080, function () {
   console.log("Example app listening on port 8080!");
+  console.log("http://localhost:8080");
 });
 
 app.get("/rank", async function (req, res) {
