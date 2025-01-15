@@ -98,6 +98,8 @@ function display(data){
 <div class="song-card">
     <img style="width: 100%;" src="${song1.track.album.images[0].url}" alt="Song Image" class="song-image" />
     <h3 class="song-title">${song1.track.name}</h3>
+
+    <iframe style="border-radius:12px" src="https://open.spotify.com/embed/track/${song1.track.id}?utm_source=generator" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
     <p class="song-artist">${song1artists}</p>
 </div>
 `;
@@ -108,6 +110,8 @@ function display(data){
 <div class="song-card">
     <img style="width: 100%;" src="${song2.track.album.images[0].url}" alt="Song Image" class="song-image" />
     <h3 class="song-title">${song2.track.name}</h3>
+
+    <iframe style="border-radius:12px" src="https://open.spotify.com/embed/track/${song2.track.id}?utm_source=generator" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
     <p class="song-artist">${song2artists}</p>
 </div>
 `;
@@ -158,5 +162,5 @@ document.addEventListener("keydown", function(event) {
         document.getElementById("option2").click();
     }
 });
-</script>
+    </script>
 </html> 
