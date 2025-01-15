@@ -147,6 +147,19 @@ async function addToPlayList(playlistId, songId) {
   return response;
 }
 
+async function removeFromPlayList(playlistId, songId) {
+  const uriFormate = `spotify:track:${songId}`;
+  const response = await fetchWebApi(
+    `v1/playlists/${playlistId}/tracks`,
+    "DELETE",
+    {
+      uris: [uriFormate],
+    },
+  );
+  console.log(response);
+  return response;
+}
+
 const likedSongsList = [];
 const limit = 50; // Maximum number of items to return per request
 
@@ -208,6 +221,13 @@ app.post("/api/choose", async function (req, res) {
   }
   if (newelo2 > addThreshold) {
     await addToPlayList(playlistId, songid2);
+  }
+
+  if (el > addThreshold && newelo1 <= addThreshold) {
+    await removeFromPlayList(playlistId, songid1);
+  }
+  if (el > addThreshold && newelo2 <= addThreshold) {
+    await removeFromPlayList(playlistId, songid2);
   }
 
   res.send("ok");
