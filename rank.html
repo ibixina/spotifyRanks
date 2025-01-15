@@ -150,5 +150,13 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     });
 });
-    </script>
+
+document.addEventListener("keyup", function(event) {
+    if (event.key == "Left") {
+        document.getElementById("option1").click();
+    } else if (event.key == "Right") {
+        document.getElementById("option2").click();
+    }
+});
+</script>
 </html> 

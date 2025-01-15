@@ -5,7 +5,7 @@ const storage = require("node-persist");
 const myStorage = storage.create();
 myStorage.initSync();
 
-const addThreshold = 1200;
+const addThreshold = 1400;
 
 require("dotenv").config();
 const request = require("request");
@@ -26,6 +26,7 @@ const cors = require("cors");
 app.use(cors());
 
 const ranking = {};
+let sortedRanking;
 
 const headers = {
   client_id: clientId,
@@ -97,9 +98,9 @@ app.get("/api/get", async function (req, res) {
     matches: ranking[song2.track.id].matches,
   });
 
-  const initialRanking = Object.values(ranking).sort((a, b) => b.elo - a.elo);
-  const bottomRanking = initialRanking.slice(-10);
-  const topRanking = initialRanking.slice(0, 10);
+  sortedRanking = Object.values(ranking).sort((a, b) => b.elo - a.elo);
+  const bottomRanking = sortedRanking.slice(-10);
+  const topRanking = sortedRanking.slice(0, 10);
   const responseToSend = {
     songs: [song1, song2],
     ranking: topRanking,
@@ -182,6 +183,7 @@ async function getLikedSongs(offset = 0) {
       name: song.track.name,
       elo: elo,
       matches: matches,
+      id: song.track.id,
     };
   });
 
@@ -190,6 +192,7 @@ async function getLikedSongs(offset = 0) {
     // Recursively fetch the next set of songs
     await getLikedSongs(offset + limit);
   }
+  sortedRanking = Object.values(ranking).sort((a, b) => b.elo - a.elo);
 
   return likedSongsList;
 }
@@ -200,10 +203,12 @@ app.post("/api/choose", async function (req, res) {
   win = win * 1;
   const songid1 = songid[0];
   const songid2 = songid[1];
+  const matches1 = ranking[songid1].matches;
+  const matches2 = ranking[songid2].matches;
   const elo1 = ranking[songid1].elo;
   const elo2 = ranking[songid2].elo;
   console.log(elo1, elo2);
-  const [newelo1, newelo2] = winner(elo1, elo2, win);
+  const [newelo1, newelo2] = winner(elo1, elo2, win, matches1, matches2);
   ranking[songid1].elo = newelo1;
   ranking[songid2].elo = newelo2;
 
@@ -223,10 +228,10 @@ app.post("/api/choose", async function (req, res) {
     await addToPlayList(playlistId, songid2);
   }
 
-  if (el > addThreshold && newelo1 <= addThreshold) {
+  if (elo1 > addThreshold && newelo1 <= addThreshold) {
     await removeFromPlayList(playlistId, songid1);
   }
-  if (el > addThreshold && newelo2 <= addThreshold) {
+  if (elo2 > addThreshold && newelo2 <= addThreshold) {
     await removeFromPlayList(playlistId, songid2);
   }
 
@@ -234,18 +239,45 @@ app.post("/api/choose", async function (req, res) {
 });
 
 function chooseRandom() {
-  const shuffled = likedSongsList.sort(() => 0.5 - Math.random());
-  const randomSongs = shuffled.slice(0, 2);
+  const lengthOfRanking = sortedRanking.length;
+  const randomIndex = Math.floor(Math.random() * (lengthOfRanking - 1));
+  const firstSong = likedSongsList.find(
+    (song) => song.track.id == sortedRanking[randomIndex].id,
+  );
+  const distance = 30;
+  const [lowerlimit, upperlimit] = [
+    Math.max(0, randomIndex - distance),
+    Math.min(lengthOfRanking - 1, randomIndex + distance),
+  ];
+  let secondIndex = lowerlimit + Math.floor(Math.random() * upperlimit);
+  while (secondIndex == randomIndex) {
+    secondIndex = lowerlimit + Math.floor(Math.random() * upperlimit);
+  }
+  const secondSong = likedSongsList.find(
+    (song) => song.track.id == sortedRanking[secondIndex].id,
+  );
+  const randomSongs = [firstSong, secondSong];
   return randomSongs;
 }
 
-function winner(track1elo, track2elo, winner) {
+function winner(track1elo, track2elo, winner, matches1, matches2) {
   console.log(track1elo, track2elo, winner);
   const expected = 1 / (1 + 10 ** ((track2elo - track1elo) / 400));
-  const K = 30;
+  let K = 30;
   const actual1 = winner == 1 ? 1 : 0;
   const actual2 = winner == 0 ? 1 : 0;
+  if (matches1 > 50) {
+    K = 20;
+  } else {
+    K = -1 * matches1 + 50 + 20;
+  }
   const newelo1 = track1elo + K * (actual1 - expected);
+
+  if (matches2 > 50) {
+    K = 20;
+  } else {
+    K = -1 * matches2 + 50 + 20;
+  }
   const newelo2 = track2elo + K * (actual2 - 1 + expected);
   console.log(newelo1, newelo2);
   return [newelo1, newelo2];
