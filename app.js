@@ -1,9 +1,13 @@
 const app = require("express")();
+require("dotenv").config();
 const request = require("request");
 const bodyParser = require("express").json;
 var querystring = require("querystring");
-const clientId = "";
-const clientSecret = "";
+
+const clientId = process.env.CLIENT_ID;
+const clientSecret = process.env.CLIENT_SECRET;
+const playlistId = process.env.PLAYLIST_ID;
+
 const tokenUrl = "https://accounts.spotify.com/api/token";
 const redirectUri = "http://localhost:8080/callback";
 const authorizationUrl = "https://accounts.spotify.com/authorize";
@@ -19,7 +23,7 @@ const headers = {
   client_id: clientId,
   response_type: "code",
   redirect_uri: redirectUri,
-  scope: "user-library-read",
+  scope: "user-library-read playlist-modify-public playlist-modify-private",
 };
 
 let counter = 0;
@@ -96,6 +100,13 @@ async function fetchWebApi(endpoint, method, body) {
     body: JSON.stringify(body),
   });
   return await res.json();
+}
+
+async function addToPlayList(playlistId, songId) {
+  const response = await fetchWebApi(`playlists/${playlistId}/tracks`, "POST", {
+    uris: [songId],
+  });
+  return response;
 }
 
 const likedSongsList = [];
