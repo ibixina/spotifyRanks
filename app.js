@@ -249,13 +249,16 @@ function chooseRandom() {
     Math.max(0, randomIndex - distance),
     Math.min(lengthOfRanking - 1, randomIndex + distance),
   ];
-  let secondIndex = lowerlimit + Math.floor(Math.random() * upperlimit);
+  let secondIndex =
+    lowerlimit + Math.floor(Math.random() * (upperlimit - lowerlimit));
   while (secondIndex == randomIndex) {
-    secondIndex = lowerlimit + Math.floor(Math.random() * upperlimit);
+    secondIndex =
+      lowerlimit + Math.floor(Math.random() * (upperlimit - lowerlimit));
   }
   const secondSong = likedSongsList.find(
     (song) => song.track.id == sortedRanking[secondIndex].id,
   );
+  console.log(randomIndex, secondIndex, lengthOfRanking);
   const randomSongs = [firstSong, secondSong];
   return randomSongs;
 }
