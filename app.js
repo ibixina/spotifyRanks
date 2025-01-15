@@ -1,4 +1,10 @@
-const app = require("express")();
+const express = require("express");
+const app = express();
+
+const storage = require("node-persist");
+const myStorage = storage.create();
+myStorage.initSync();
+
 require("dotenv").config();
 const request = require("request");
 const bodyParser = require("express").json;
@@ -67,11 +73,30 @@ app.get("/rank", async function (req, res) {
 });
 
 app.get("/api/get", async function (req, res) {
-  const randomSongs = chooseRandom();
+  const [song1, song2] = chooseRandom();
+
+  ranking[song1.track.id].matches += 1;
+  ranking[song2.track.id].matches += 1;
+
+  const elo1 = ranking[song1.track.id].elo;
+  const elo2 = ranking[song2.track.id].elo;
+
+  await myStorage.setItem(song1.track.id, {
+    elo: elo1,
+    matches: ranking[song1.track.id].matches,
+  });
+  await myStorage.setItem(song2.track.id, {
+    elo: elo2,
+    matches: ranking[song2.track.id].matches,
+  });
+
   const initialRanking = Object.values(ranking).sort((a, b) => b.elo - a.elo);
+  const bottomRanking = initialRanking.slice(-10);
+  const topRanking = initialRanking.slice(0, 10);
   const responseToSend = {
-    songs: randomSongs,
-    ranking: initialRanking,
+    songs: [song1, song2],
+    ranking: topRanking,
+    rankingBottom: bottomRanking,
   };
 
   res.json(responseToSend);
@@ -118,11 +143,19 @@ async function getLikedSongs(offset = 0) {
 
   // Fetch the liked songs from the API
   const response = await fetchWebApi(url, "GET");
-  response.items.forEach((song) => {
+  response.items.forEach(async (song) => {
     likedSongsList.push(song);
+    let elo = 1000;
+    let matches = 0;
+    const storedData = await myStorage.getItem(song.track.id);
+    if (storedData !== undefined && storedData !== null) {
+      elo = storedData.elo || 1000;
+      matches = storedData.matches || 0;
+    }
     ranking[song.track.id] = {
       name: song.track.name,
-      elo: 1000,
+      elo: elo,
+      matches: matches,
     };
   });
 
@@ -147,6 +180,15 @@ app.post("/api/choose", async function (req, res) {
   const [newelo1, newelo2] = winner(elo1, elo2, win);
   ranking[songid1].elo = newelo1;
   ranking[songid2].elo = newelo2;
+
+  await myStorage.setItem(songid1, {
+    elo: newelo1,
+    matches: ranking[songid1].matches,
+  });
+  await myStorage.setItem(songid2, {
+    elo: newelo2,
+    matches: ranking[songid2].matches,
+  });
 
   res.send("ok");
 });

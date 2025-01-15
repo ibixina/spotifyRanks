@@ -52,8 +52,13 @@
                 <div class="page-header">
                     <h1>Spotify Rank</h1>
                 </div>
+                <h5>Top 10 Ranking</h5>
                 <ul class="ranking">
 
+                </ul>
+
+                <h5>Bottom 10 Ranking</h5>
+                <ul class="rankingBottom">
                 </ul>
             </div>
             <div class="col-md-12 options" id="option1" >
@@ -84,6 +89,7 @@ function display(data){
     const song1 = data.songs[0];
     const song2 = data.songs[1];
     const ranking = data.ranking;
+    const rankingBottom = data.rankingBottom;
     const song1artists = song1.track.artists.map(artist => `<a href="https://open.spotify.com/artist/${artist.id}">${artist.name}</a>`).join(", ");
     const song2artists = song2.track.artists.map(artist => `<a href="https://open.spotify.com/artist/${artist.id}">${artist.name}</a>`).join(", ");
 
@@ -110,6 +116,12 @@ function display(data){
     document.querySelector(".ranking").innerHTML ="";
     for (const rank of ranking){
         document.querySelector(".ranking").innerHTML += `<li>${rank.name} - ${rank.elo}</li>`;
+    }
+
+
+    document.querySelector(".rankingBottom").innerHTML ="";
+    for (const rank of rankingBottom){
+        document.querySelector(".rankingBottom").innerHTML += `<li>${rank.name} - ${rank.elo}</li>`;
     }
 }
 
