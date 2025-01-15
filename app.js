@@ -5,6 +5,8 @@ const storage = require("node-persist");
 const myStorage = storage.create();
 myStorage.initSync();
 
+const addThreshold = 1200;
+
 require("dotenv").config();
 const request = require("request");
 const bodyParser = require("express").json;
@@ -56,11 +58,16 @@ app.get("/callback", function (req, res) {
     },
     json: true,
   };
-  const newToken = request.post(authOptions, function (error, response, body) {
-    token = body.access_token;
-    console.log(token);
-    res.redirect("/rank");
-  });
+  const newToken = request.post(
+    authOptions,
+    async function (error, response, body) {
+      token = body.access_token;
+      console.log(token);
+
+      console.log("added");
+      res.redirect("/rank");
+    },
+  );
 });
 app.listen(8080, function () {
   console.log("Example app listening on port 8080!");
@@ -103,7 +110,7 @@ app.get("/api/get", async function (req, res) {
 });
 
 app.get("/login", function (req, res) {
-  var scope = "user-library-read";
+  let scope = headers.scope;
 
   res.redirect(
     "https://accounts.spotify.com/authorize?" +
@@ -128,9 +135,15 @@ async function fetchWebApi(endpoint, method, body) {
 }
 
 async function addToPlayList(playlistId, songId) {
-  const response = await fetchWebApi(`playlists/${playlistId}/tracks`, "POST", {
-    uris: [songId],
-  });
+  const uriFormate = `spotify:track:${songId}`;
+  const response = await fetchWebApi(
+    `v1/playlists/${playlistId}/tracks`,
+    "POST",
+    {
+      uris: [uriFormate],
+    },
+  );
+  console.log(response);
   return response;
 }
 
@@ -189,6 +202,13 @@ app.post("/api/choose", async function (req, res) {
     elo: newelo2,
     matches: ranking[songid2].matches,
   });
+
+  if (newelo1 > addThreshold) {
+    await addToPlayList(playlistId, songid1);
+  }
+  if (newelo2 > addThreshold) {
+    await addToPlayList(playlistId, songid2);
+  }
 
   res.send("ok");
 });
