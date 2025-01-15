@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Spotify Rank</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css">
+
+        <style>
+        #app {
+            display: flex;
+            width: 100%;
+        }
+
+        .col-md-12 {
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .page-header {
+            flex: 0 0 25%; /* Rank column takes 25% width */
+            background-color: lightblue; /* Optional styling */
+        }
+
+        #option1,
+        #option2 {
+            max-width: 30%; /* Option column takes 50% width */
+            background-color: lightcoral; /* Optional styling */
+        }
+
+        /* Optional: Add spacing between columns */
+        .col-md-12:not(:last-child) {
+            margin-right: 10px;
+        }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="page-header">
+                        <h1>Spotify Rank</h1>
+                    </div>
+                </div>
+            </div>
+            <br>
+        </div>
+        <div id="app">
+            <div class="col-md-12">
+                <div class="page-header">
+                    <h1>Spotify Rank</h1>
+                </div>
+                <ul class="ranking">
+
+                </ul>
+            </div>
+            <div class="col-md-12 options" id="option1" >
+                <h2>Song 1</h2>
+            </div>
+            <div class="col-md-12 options" id="option2" >
+                <h2>Song 2</h2>
+            </div>
+        </div>
+
+
+    </body>
+    <script>
+async function getData() {
+    try {
+        const response = await fetch("/api/get");
+        if (!response.ok) {
+            throw new Error("Server returned " + response.status);
+        }
+        const data = await response.json();
+        display(data);
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+function display(data){
+    const song1 = data.songs[0];
+    const song2 = data.songs[1];
+    const ranking = data.ranking;
+    const song1artists = song1.track.artists.map(artist => `<a href="https://open.spotify.com/artist/${artist.id}">${artist.name}</a>`).join(", ");
+    const song2artists = song2.track.artists.map(artist => `<a href="https://open.spotify.com/artist/${artist.id}">${artist.name}</a>`).join(", ");
+
+    const option1 = document.getElementById("option1");
+    option1.innerHTML = `
+<div class="song-card">
+    <img style="width: 100%;" src="${song1.track.album.images[0].url}" alt="Song Image" class="song-image" />
+    <h3 class="song-title">${song1.track.name}</h3>
+    <p class="song-artist">${song1artists}</p>
+</div>
+`;
+    option1.setAttribute("song-id", song1.track.id);
+
+    const option2 = document.getElementById("option2");
+    option2.innerHTML = `
+<div class="song-card">
+    <img style="width: 100%;" src="${song2.track.album.images[0].url}" alt="Song Image" class="song-image" />
+    <h3 class="song-title">${song2.track.name}</h3>
+    <p class="song-artist">${song2artists}</p>
+</div>
+`;
+    option2.setAttribute("song-id", song2.track.id);
+
+    document.querySelector(".ranking").innerHTML ="";
+    for (const rank of ranking){
+        document.querySelector(".ranking").innerHTML += `<li>${rank.name} - ${rank.elo}</li>`;
+    }
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    getData();
+
+    // Loop through each ".options" element and add the event listener
+    document.querySelectorAll(".options").forEach(function(option) {
+        option.addEventListener("click", async function() {
+            const winner = this.id === "option1" ? 1 : 0;
+            const song1 = document.getElementById("option1").getAttribute("song-id");
+            const song2 = document.getElementById("option2").getAttribute("song-id");
+
+            const data = await fetch("/api/choose", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    songid: [song1, song2],
+                    win: winner,
+                }),
+            });
+
+            getData(); // Update data after choice
+        });
+    });
+});
+    </script>
+</html> 
