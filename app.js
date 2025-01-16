@@ -5,7 +5,8 @@ const storage = require("node-persist");
 const myStorage = storage.create();
 myStorage.initSync();
 
-const addThreshold = 1400;
+const addThreshold = 1300;
+const removeThreshold = 750;
 
 require("dotenv").config();
 const request = require("request");
@@ -28,11 +29,14 @@ app.use(cors());
 const ranking = {};
 let sortedRanking;
 
+const songListinPlaylist = [];
+
 const headers = {
   client_id: clientId,
   response_type: "code",
   redirect_uri: redirectUri,
-  scope: "user-library-read playlist-modify-public playlist-modify-private",
+  scope:
+    "user-library-read playlist-modify-public playlist-modify-private user-library-modify",
 };
 
 let counter = 0;
@@ -77,9 +81,10 @@ app.listen(8080, HOST, function () {
 });
 
 app.get("/rank", async function (req, res) {
+  const playlistSongs = await getPlaylistSongs(playlistId);
   const likedSongs = await getLikedSongs();
   const names = likedSongs.map((song) => song.track.name);
-  res.sendFile(__dirname + "/rank.html");
+  res.sendFile(__dirname + "/rank2.html");
 });
 
 app.get("/api/get", async function (req, res) {
@@ -100,7 +105,7 @@ app.get("/api/get", async function (req, res) {
     matches: ranking[song2.track.id].matches,
   });
 
-  sortedRanking = Object.values(ranking).sort((a, b) => b.elo - a.elo);
+  sortedRanking = Object.values(sortedRanking).sort((a, b) => b.elo - a.elo);
   const bottomRanking = sortedRanking.slice(-10);
   const topRanking = sortedRanking.slice(0, 10);
   const responseToSend = {
@@ -134,16 +139,38 @@ async function fetchWebApi(endpoint, method, body) {
     method,
     body: JSON.stringify(body),
   });
+  if (method == "DELETE") {
+    return res.status;
+  }
   return await res.json();
 }
 
-async function addToPlayList(playlistId, songId) {
-  const uriFormate = `spotify:track:${songId}`;
+async function getPlaylistSongs(playlistId) {
+  const response = await fetchWebApi(
+    `v1/playlists/${playlistId}/tracks`,
+    "GET",
+  );
+
+  response.items.forEach((song) => {
+    songListinPlaylist.push(song.track.id);
+  });
+
+  if (response.next) {
+    await getPlaylistSongs(playlistId);
+  }
+  return songListinPlaylist;
+}
+
+async function addToPlayList(playlistId, songIds) {
+  console.log(
+    `adding ${songIds.map((songId) => ranking[songId].name).join(", ")} to playlist`,
+  );
+  const uriFormate = songIds.map((songId) => `spotify:track:${songId}`);
   const response = await fetchWebApi(
     `v1/playlists/${playlistId}/tracks`,
     "POST",
     {
-      uris: [uriFormate],
+      uris: uriFormate,
     },
   );
   console.log(response);
@@ -151,6 +178,7 @@ async function addToPlayList(playlistId, songId) {
 }
 
 async function removeFromPlayList(playlistId, songId) {
+  console.log(`removing ${ranking[songId].name} from playlist`);
   const uriFormate = `spotify:track:${songId}`;
   const response = await fetchWebApi(
     `v1/playlists/${playlistId}/tracks`,
@@ -163,9 +191,19 @@ async function removeFromPlayList(playlistId, songId) {
   return response;
 }
 
+async function removeFromLiked(songId) {
+  console.log(`removing ${ranking[songId].name} from liked songs`);
+  const response = await fetchWebApi(`v1/me/tracks`, "DELETE", {
+    ids: [songId],
+  });
+  console.log(response);
+  return response;
+}
+
 const likedSongsList = [];
 const limit = 50; // Maximum number of items to return per request
 
+const toAddList = [];
 async function getLikedSongs(offset = 0) {
   // Construct the URL with the provided offset
   const url = `v1/me/tracks?limit=${limit}&offset=${offset}`;
@@ -187,15 +225,27 @@ async function getLikedSongs(offset = 0) {
       matches: matches,
       id: song.track.id,
     };
+
+    if (elo > addThreshold && !songListinPlaylist.includes(song.track.id)) {
+      toAddList.push(song.track.id);
+    }
   });
 
   // Check if there are more items to fetch
   if (response.next) {
     // Recursively fetch the next set of songs
-    await getLikedSongs(offset + limit);
+    return await getLikedSongs(offset + limit);
   }
   sortedRanking = Object.values(ranking).sort((a, b) => b.elo - a.elo);
 
+  console.log("Songs to add: ");
+  console.log(toAddList.map((song) => ranking[song].name).join("\n"));
+  console.log("Songs in playlist: ");
+  console.log(songListinPlaylist.map((song) => ranking[song].name).join("\n"));
+
+  if (toAddList.length > 0) {
+    await addToPlayList(playlistId, toAddList);
+  }
   return likedSongsList;
 }
 
@@ -223,11 +273,11 @@ app.post("/api/choose", async function (req, res) {
     matches: ranking[songid2].matches,
   });
 
-  if (newelo1 > addThreshold) {
-    await addToPlayList(playlistId, songid1);
+  if (newelo1 > addThreshold && elo1 <= addThreshold) {
+    await addToPlayList(playlistId, [songid1]);
   }
-  if (newelo2 > addThreshold) {
-    await addToPlayList(playlistId, songid2);
+  if (newelo2 > addThreshold && elo2 <= addThreshold) {
+    await addToPlayList(playlistId, [songid2]);
   }
 
   if (elo1 > addThreshold && newelo1 <= addThreshold) {
@@ -235,6 +285,17 @@ app.post("/api/choose", async function (req, res) {
   }
   if (elo2 > addThreshold && newelo2 <= addThreshold) {
     await removeFromPlayList(playlistId, songid2);
+  }
+
+  if (newelo1 <= removeThreshold) {
+    await removeFromLiked(songid1);
+    // remove it from sortedRanking
+    sortedRanking = sortedRanking.filter((song) => song.id != songid1);
+  }
+  if (newelo2 <= removeThreshold) {
+    await removeFromLiked(songid2);
+    // remove it from sortedRanking
+    sortedRanking = sortedRanking.filter((song) => song.id != songid2);
   }
 
   res.send("ok");
