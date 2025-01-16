@@ -5,7 +5,7 @@ const storage = require("node-persist");
 const myStorage = storage.create();
 myStorage.initSync();
 
-const addThreshold = 1300;
+const addThreshold = 1250;
 const removeThreshold = 750;
 
 require("dotenv").config();
@@ -307,7 +307,7 @@ function chooseRandom() {
   const firstSong = likedSongsList.find(
     (song) => song.track.id == sortedRanking[randomIndex].id,
   );
-  const distance = 30;
+  const distance = 50;
   const [lowerlimit, upperlimit] = [
     Math.max(0, randomIndex - distance),
     Math.min(lengthOfRanking - 1, randomIndex + distance),
