@@ -304,7 +304,7 @@ app.post("/api/choose", async function (req, res) {
 
 function chooseRandom() {
   const lengthOfRanking = sortedRanking.length;
-  const randomIndex = Math.floor(Math.random() * (lengthOfRanking - 1));
+  const randomIndex = Math.floor(Math.random() * lengthOfRanking);
   const firstSong = likedSongsList.find(
     (song) => song.track.id == sortedRanking[randomIndex].id,
   );
