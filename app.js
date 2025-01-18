@@ -6,6 +6,7 @@ const myStorage = storage.create();
 myStorage.initSync();
 
 const addThreshold = 1250;
+const likeRemoveThreshold = addThreshold - 30;
 const removeThreshold = 750;
 
 require("dotenv").config();
@@ -280,10 +281,10 @@ app.post("/api/choose", async function (req, res) {
     await addToPlayList(playlistId, [songid2]);
   }
 
-  if (elo1 > addThreshold && newelo1 <= addThreshold) {
+  if (elo1 > likeRemoveThreshold && newelo1 <= likeRemoveThreshold) {
     await removeFromPlayList(playlistId, songid1);
   }
-  if (elo2 > addThreshold && newelo2 <= addThreshold) {
+  if (elo2 > likeRemoveThreshold && newelo2 <= likeRemoveThreshold) {
     await removeFromPlayList(playlistId, songid2);
   }
 
